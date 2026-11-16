@@ -55,13 +55,18 @@ function measure() {
     rail.style.setProperty('--line-y', `${lineY.toFixed(1)}px`);
     // o bloco da largada termina logo acima da linha: ela sublinha o CTA como no logo
     const headerH = parseFloat(getComputedStyle(root).getPropertyValue('--header-h')) || 68;
+    const room = lineY - 30 - (headerH + 20);   // espaço entre o cabeçalho e a linha de luz
     for (const pn of panels) {
       const copy = pn.querySelector('.panel__copy');
-      copy.style.setProperty('--copy-top', `${Math.max(headerH + 24, lineY - 30 - copy.offsetHeight).toFixed(0)}px`);
+      pn.classList.remove('is-compact', 'is-compact-2');
+      if (copy.offsetHeight > room) pn.classList.add('is-compact');
+      if (copy.offsetHeight > room) pn.classList.add('is-compact-2');
+      copy.style.setProperty('--copy-top', `${Math.max(headerH + 20, lineY - 30 - copy.offsetHeight).toFixed(0)}px`);
     }
   } else {
     dist = 0;
-    panels.forEach((pn) => pn.querySelector('.panel__copy').style.removeProperty('--copy-top'));
+    panels.forEach((pn) => { pn.classList.remove('is-compact', 'is-compact-2'); pn.querySelector('.panel__copy').style.removeProperty('--copy-top'); });
+    parallax.forEach((img) => { img.style.transform = ''; });   // sem deslocamentos herdados da pista
     track.style.removeProperty('--track-h');
     rail.style.removeProperty('--rail-x');
   }
@@ -165,7 +170,10 @@ function goTo(id, focus = false) {
   let y;
   if (panel && isTrack) y = trackTop + Math.min(panel.offsetLeft, dist);
   else if (id === 'largada') y = 0;
-  else y = el.getBoundingClientRect().top + scrollY;
+  else {
+    const headerH = parseFloat(getComputedStyle(root).getPropertyValue('--header-h')) || 64;
+    y = el.getBoundingClientRect().top + scrollY - (el.id === 'box' || el.id === 'bandeirada' ? 0 : headerH);
+  }
   scrollTo({ top: y, behavior: reduceMQ.matches ? 'auto' : 'smooth' });
   history.replaceState(null, '', `#${id}`);
   if (focus) {
@@ -187,10 +195,17 @@ rail.addEventListener('focusin', (e) => {
   if (!isTrack) return;
   const panel = e.target.closest('[data-panel]');
   if (!panel) return;
-  const y = trackTop + Math.min(panel.offsetLeft, dist);
-  if (Math.abs(scrollY - y) > 4) scrollTo({ top: y, behavior: 'auto' });
-  rail.parentElement.scrollLeft = 0;
+  const r = e.target.getBoundingClientRect();
+  const xInRail = r.left - rail.getBoundingClientRect().left;   // posição do elemento na pista inteira
+  const want = panel.offsetWidth <= vw + 2 ? panel.offsetLeft : xInRail - vw / 2 + r.width / 2;
+  const y = trackTop + clamp(Math.round(want), 0, dist);
+  if (Math.abs(scrollY - y) > 4) { scrollTo({ top: y, behavior: 'auto' }); railX = targetX(); rail.style.setProperty('--rail-x', `${(-railX).toFixed(1)}px`); }
+  // o navegador rola sozinho a área da pista para mostrar o foco; a pista controla isso
+  const vp = rail.parentElement;
+  vp.scrollLeft = 0;
+  requestAnimationFrame(() => { vp.scrollLeft = 0; });
 });
+rail.parentElement.addEventListener('scroll', (e) => { if (isTrack && e.target.scrollLeft) e.target.scrollLeft = 0; });
 
 /* ---------------- Menu ---------------- */
 function setupMenu() {
@@ -247,6 +262,8 @@ function setupConsult() {
   const LABELS = { veiculo: 'Veículo', ano: 'Ano', versao: 'Versão', peca: 'Peça' };
   const clean = (v) => v.replace(/\s+/g, ' ').trim();
   const maxYear = new Date().getFullYear() + 1;
+  const anoErr = document.getElementById('c-ano-erro');
+  if (anoErr) anoErr.textContent = `Informe um ano entre 1950 e ${maxYear}, com quatro dígitos.`;
   const rules = {
     veiculo: (v) => v.length >= 2,
     ano: (v) => /^\d{4}$/.test(v) && +v >= 1950 && +v <= maxYear,
@@ -347,6 +364,32 @@ function setupConsult() {
   render();
 }
 
+/* ---------------- Entrada ---------------- */
+// Só existe se o <head> marcou has-intro (JS ativo, sem movimento reduzido, primeira vez na sessão).
+// O conteúdo já está no DOM; a entrada dura ~1,7 s e qualquer interação a encerra na hora.
+function setupIntro() {
+  const ready = () => requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('is-ready')));
+  const intro = document.querySelector('[data-intro]');
+  if (intro && location.hash.length > 1) root.classList.remove('has-intro');   // link direto: vai ao destino sem entrada
+  if (!intro || !root.classList.contains('has-intro')) { intro?.remove(); ready(); return; }
+  // a linha da entrada nasce na mesma altura da linha da pista, para virar a própria linha da página
+  const ly = getComputedStyle(rail).getPropertyValue('--line-y');
+  if (ly) intro.style.setProperty('--intro-line', ly.trim());
+  try { sessionStorage.setItem('pp-intro', '1'); } catch { /* sem armazenamento: mostra de novo na próxima visita */ }
+  let done = false;
+  const events = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+  function leave() {
+    if (done) return;
+    done = true;
+    events.forEach((ev) => removeEventListener(ev, leave));
+    intro.classList.add('is-leaving');
+    root.classList.add('is-ready');          // a largada acende enquanto a tela sai
+    setTimeout(() => { root.classList.remove('has-intro'); intro.remove(); measure(); onScroll(); }, 620);
+  }
+  events.forEach((ev) => addEventListener(ev, leave, { passive: true }));
+  setTimeout(leave, 1350);
+}
+
 /* ---------------- Início ---------------- */
 function init() {
   setupMenu();
@@ -354,7 +397,7 @@ function init() {
   measure();
   onScroll();
   render(performance.now());
-  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('is-ready')));
+  setupIntro();
 
   addEventListener('scroll', onScroll, { passive: true });
   let rt = 0;

@@ -65,6 +65,7 @@ button, input { font: inherit; color: inherit; }
   display: flex; align-items: center; gap: 22px; padding: 0 var(--gutter);
   background: var(--ink); color: var(--on-ink); border-bottom: 1px solid var(--rule);
 }
+.brand { display: inline-flex; align-items: center; min-height: 44px; }
 .brand img { width: clamp(150px, 14vw, 188px); height: auto; }
 .authorship { width: 15px; height: auto; opacity: .85; pointer-events: none; flex: none; padding-left: 14px; box-sizing: content-box; border-left: 1px solid #ffffff22; }
 .site-nav { display: flex; gap: clamp(20px, 2.6vw, 36px); margin-left: auto; }
@@ -195,7 +196,7 @@ button, input { font: inherit; color: inherit; }
 .is-track .window { position: absolute; z-index: 0; top: 0; bottom: 0; }
 .is-track .window--hero { left: 26%; right: 0; }
 .is-track .window--hero .window__glass { -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / .25) 14%, #000 34%, #000 86%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / .25) 14%, #000 34%, #000 86%, transparent 100%); }
-.is-track .window--hero figcaption { position: absolute; right: calc(var(--gutter) + 4%); bottom: 118px; }
+.is-track .window--hero figcaption { position: absolute; right: var(--gutter); top: calc(var(--line-y, 62.7%) + 20px); padding: 6px 10px; background: rgb(10 11 14 / .72); color: #c3c8cf; }
 .is-track .window--s1 { left: 24%; right: 0; }
 .is-track .window--s2 { left: 32%; right: 0; }
 .is-track .window--s1 .window__glass, .is-track .window--s2 .window__glass { -webkit-mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / .25) 14%, #000 34%, #000 86%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, rgb(0 0 0 / .25) 14%, #000 34%, #000 86%, transparent 100%); }
@@ -279,7 +280,7 @@ html:not(.is-track) .panel--s1 .window { order: -1; }
   mask-image: linear-gradient(90deg, transparent 0%, #000 38%), linear-gradient(180deg, transparent 0%, #000 12%, #000 84%, transparent 100%);
   -webkit-mask-composite: source-in; mask-composite: intersect; }
 .finish__scene img { width: 100%; height: 100%; object-fit: cover; object-position: 72% 55%; }
-.finish__inner { position: relative; z-index: 1; padding: clamp(72px, 12vh, 140px) var(--gutter) clamp(80px, 12vh, 140px); max-width: 1280px; }
+.finish__inner { position: relative; z-index: 1; padding: clamp(72px, 12vh, 140px) var(--gutter) clamp(120px, 16vh, 170px); max-width: 1280px; }
 .title--finish { font-size: clamp(3.2rem, 8vw, 8.8rem); max-width: 11ch; }
 .title--finish::after { content: ""; display: block; width: 1.6em; height: 6px; margin-top: .32em; background: var(--red); transform: skewX(-20deg); transform-origin: 0 0; }
 .finish__actions { display: flex; flex-wrap: wrap; gap: 16px; align-items: stretch; margin-top: 44px; }
@@ -418,3 +419,45 @@ html:not(.is-track) .pit-sign { justify-self: start; padding: 22px 48px; clip-pa
 .is-track .panel--s2 .clues li, .is-track .panel--s2 .clues li:first-child { border-top: 0; grid-template-columns: 48px 1fr; }
 .is-track .panel--s2 .clues li::before { font-size: 1.9rem; }
 .is-track .panel .panel__copy { text-shadow: 0 1px 18px rgb(0 0 0 / .5); }
+
+/* ---------- Entrada (1,7 s, uma vez por visita; pula com clique, tecla, rolagem ou toque) ---------- */
+.intro { display: none; }
+.has-intro .intro {
+  position: fixed; inset: 0; z-index: 95; display: grid; place-items: center; background: var(--paper);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+}
+.has-intro body { overflow: hidden; }
+.intro__stage { position: absolute; left: 50%; top: var(--intro-line, 62.7vh); width: min(560px, 76vw); translate: -50% -67.5%; }
+.intro__logo { position: relative; z-index: 1; width: 100%; height: auto; clip-path: polygon(0 0, 0 0, -12% 100%, -12% 100%); animation: intro-logo .7s var(--ease-out) .32s forwards; }
+/* a linha passa exatamente pelo sublinhado do logo e atravessa a tela */
+.intro__line { position: absolute; top: 67.5%; left: calc(50% - 50vw); width: 100vw; height: 2px; margin-top: -1px; background: #ff2a40;
+  box-shadow: 0 0 6px #ff2a40, 0 0 22px rgb(229 31 53 / .8), 0 0 60px rgb(229 31 53 / .35); transform: scaleX(0); transform-origin: 0 50%;
+  animation: intro-line .6s var(--ease-io) forwards; }
+/* brilho que corre pelo logo depois de revelado */
+.intro__mark { position: relative; z-index: 1; display: block; overflow: hidden; }
+.intro__flag { position: absolute; z-index: 2; inset: 0 auto 0 0; width: 18%; opacity: 0; background: linear-gradient(100deg, transparent, rgb(255 255 255 / .55), transparent);
+  mix-blend-mode: overlay; transform: translateX(-120%) skewX(-12deg); animation: intro-sheen .7s var(--ease-io) 1s forwards; }
+@keyframes intro-line { to { transform: scaleX(1); } }
+@keyframes intro-logo { to { clip-path: polygon(0 0, 112% 0, 100% 100%, -12% 100%); } }
+.intro.is-leaving { animation: intro-out .6s var(--ease-io) forwards; }
+.intro.is-leaving .intro__stage { animation: intro-stage-out .6s var(--ease-io) forwards; }
+@keyframes intro-out { to { clip-path: polygon(0 0, 0 0, -24% 100%, -24% 100%); } }
+@keyframes intro-stage-out { to { transform: translateX(-6vw); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .has-intro .intro { display: none; } .has-intro body { overflow: visible; } }
+
+/* modo compacto da pista: telas baixas (ex.: 1366×768) — o bloco sempre termina acima da linha de luz */
+.is-track .panel.is-compact .title { font-size: clamp(2.4rem, 4.4vw, 4.6rem); }
+.is-track .panel.is-compact .tag { margin-bottom: 14px; }
+.is-track .panel.is-compact .lede { margin-top: 14px; font-size: 1rem; }
+.is-track .panel.is-compact .spec { margin-top: 18px; }
+.is-track .panel.is-compact .spec__row { padding: 9px 0; }
+.is-track .panel.is-compact .clues { margin-top: 16px; }
+.is-track .panel.is-compact .clues li { padding: 8px 0; }
+.is-track .panel.is-compact .actions { margin-top: 22px; }
+.is-track .panel.is-compact-2 .spec dd, .is-track .panel.is-compact-2 .clues li span { display: none; }
+.is-track .panel--s1.is-compact-2 .lede, .is-track .panel--s2.is-compact-2 .lede { display: none; }
+/* celular: o cabeçalho não cobre o início dos setores */
+html:not(.is-track) .panel, .box, .finish { scroll-margin-top: var(--header-h); }
+@media (min-width: 900px) {
+  html:not(.is-track) .window--hero figcaption { left: auto; right: var(--gutter); bottom: 28px; padding: 6px 10px; background: rgb(10 11 14 / .72); }
+}
